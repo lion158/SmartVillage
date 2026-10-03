@@ -218,3 +218,15 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# JavaScript dependencies and build output
+node_modules/
+dist/
+
+# Local configuration examples
+.env.*
+!.env.example
+
+# Operating system files
+.DS_Store
+Thumbs.db
