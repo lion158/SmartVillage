@@ -5,12 +5,16 @@ description = "Backend API for the Village City demand-responsive transport syst
 readme = "../README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "alembic>=1.14,<2.0",
     "fastapi>=0.115,<1.0",
+    "folium>=0.20,<1.0",
+    "sqlalchemy>=2.0,<3.0",
     "uvicorn[standard]>=0.34,<1.0",
 ]
 
 [dependency-groups]
 dev = [
+    "pytest>=8.3,<9.0",
     "ruff>=0.11,<1.0",
 ]
 
@@ -24,3 +28,7 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

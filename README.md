@@ -6,6 +6,7 @@ Village City is a demand-responsive public transport system for rural communitie
 
 - `backend/` — Python API, managed with `uv` and built with FastAPI.
 - `frontend/` — React and TypeScript web client, built with Vite.
+- `docs/database-architecture.md` — database model for stops, synthetic demand, and route plans.
 - `AGENTS.md` — shared project guidance for contributors and AI coding agents.
 
 The application structure is intentionally small at this stage. Add domain-specific modules and folders as the project needs them.
@@ -88,10 +89,20 @@ Open two terminals from the repository root.
 
 ```sh
 cd backend
+uv run alembic upgrade head
+uv run python -m app.database.seeds.stops
+uv run python -m app.database.stops_map
 uv run uvicorn app.main:app --reload
 ```
 
 The starter API responds at `http://127.0.0.1:8000/`, and its health endpoint is `http://127.0.0.1:8000/health`.
+
+The migration command creates the local SQLite database at
+`backend/data/smart_village.db`. Set `DATABASE_URL` to override this location.
+The seed command inserts or updates the curated stop catalog without creating duplicates.
+The map command writes an interactive visualization to `backend/data/stops_map.html`.
+The stop coordinates and source identifiers are derived from
+[OpenStreetMap](https://www.openstreetmap.org/copyright) data © OpenStreetMap contributors.
 
 ### Frontend
 
