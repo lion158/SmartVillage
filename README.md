@@ -7,6 +7,7 @@ Village City is a demand-responsive public transport system for rural communitie
 - `backend/` — Python API, managed with `uv` and built with FastAPI.
 - `frontend/` — React and TypeScript web client, built with Vite.
 - `docs/database-architecture.md` — database model for stops, synthetic demand, and route plans.
+- `docs/synthetic-demand.md` — generator assumptions, commands, and visualization workflow.
 - `AGENTS.md` — shared project guidance for contributors and AI coding agents.
 
 The application structure is intentionally small at this stage. Add domain-specific modules and folders as the project needs them.
@@ -92,6 +93,8 @@ cd backend
 uv run alembic upgrade head
 uv run python -m app.database.seeds.stops
 uv run python -m app.database.stops_map
+uv run python -m app.demand.generator --date 2026-10-05 --passengers 1000 --seed 42
+uv run python -m app.demand.report --scenario 1
 uv run uvicorn app.main:app --reload
 ```
 
@@ -101,6 +104,9 @@ The migration command creates the local SQLite database at
 `backend/data/smart_village.db`. Set `DATABASE_URL` to override this location.
 The seed command inserts or updates the curated stop catalog without creating duplicates.
 The map command writes an interactive visualization to `backend/data/stops_map.html`.
+The demand command creates a reproducible single-day scenario with synthetic passengers and
+planned trip requests.
+The report command creates an interactive demand dashboard and map for the selected scenario.
 The stop coordinates and source identifiers are derived from
 [OpenStreetMap](https://www.openstreetmap.org/copyright) data © OpenStreetMap contributors.
 

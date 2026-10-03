@@ -283,6 +283,29 @@ Recommended indexes:
 Using one transaction prevents a failed generator run from leaving a partially
 generated population in the database.
 
+### Initial synthetic-demand assumptions
+
+The first generator creates one inbound request per passenger. Origins are
+selected from active local stops, while destinations are selected from active
+city hubs using distance and city-attractiveness weights.
+
+By default, 75% of passengers select the nearest city and 25% deliberately
+select another city. Alternative cities are weighted by distance and city
+attractiveness. This represents work, school, healthcare, and personal
+preferences that are not explained by distance alone.
+
+| Persona | Share | Main purposes |
+| --- | ---: | --- |
+| `student` | 30% | School, usually arriving around 07:45 |
+| `worker` | 40% | Work, usually arriving around 08:00 |
+| `senior` | 20% | Shopping and healthcare during off-peak hours |
+| `occasional` | 10% | Shopping, leisure, healthcare, or other |
+
+Times are sampled from bounded normal distributions instead of fixed values.
+All generated requests are submitted between 08:00 and the planning cutoff on
+the previous day. The scenario's random seed makes the complete generated set
+reproducible.
+
 ## Late passenger workflow
 
 A request submitted after the cutoff is stored with `request_source = late`.

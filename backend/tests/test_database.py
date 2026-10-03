@@ -8,6 +8,7 @@ from app.database.models import (
     Passenger,
     PersonaType,
     RequestSource,
+    ScenarioStatus,
     SimulationScenario,
     Stop,
     StopKind,
@@ -18,6 +19,8 @@ from app.database.models import (
 from app.database.seeds.stops import DESTINATION_STOPS, LOCAL_STOPS, STOP_SEEDS, seed_stops
 from app.database.session import create_database_engine
 from app.database.stops_map import build_stops_map
+from app.demand.generator import DemandGenerationConfig, generate_demand
+from app.demand.report import build_demand_report
 
 
 def test_single_day_demand_can_be_persisted(tmp_path) -> None:
@@ -127,3 +130,84 @@ def test_stop_map_contains_seeded_stops(tmp_path) -> None:
     assert "Jaszkowa Dolna nż" in map_html
     assert "Destination stops" in map_html
     assert "Local pickup stops" in map_html
+
+
+def test_synthetic_demand_is_complete_and_reproducible(tmp_path) -> None:
+    signatures = []
+
+    for database_number in range(2):
+        engine = create_database_engine(f"sqlite:///{tmp_path / f'test-{database_number}.db'}")
+        Base.metadata.create_all(engine)
+
+        with Session(engine) as session:
+            seed_stops(session)
+            summary = generate_demand(
+                session,
+                DemandGenerationConfig(
+                    service_date=date(2026, 10, 5),
+                    passenger_count=200,
+                    random_seed=42,
+                ),
+            )
+            session.commit()
+
+            scenario = session.get(SimulationScenario, summary.scenario_id)
+            passengers = session.scalars(
+                select(Passenger).where(Passenger.scenario_id == summary.scenario_id)
+            ).all()
+            requests = session.scalars(
+                select(TripRequest)
+                .where(TripRequest.scenario_id == summary.scenario_id)
+                .order_by(TripRequest.id)
+            ).all()
+            signatures.append(
+                [
+                    (
+                        request.passenger.persona_type,
+                        request.origin_stop.source_reference,
+                        request.destination_stop.source_reference,
+                        request.trip_purpose,
+                        request.desired_arrival_at,
+                    )
+                    for request in requests
+                ]
+            )
+
+            assert scenario is not None
+            assert scenario.status == ScenarioStatus.DEMAND_READY
+            assert len(passengers) == 200
+            assert len(requests) == 200
+            assert set(summary.persona_counts) == {persona.value for persona in PersonaType}
+            assert all(request.origin_stop.kind == StopKind.LOCAL for request in requests)
+            assert all(request.destination_stop.kind == StopKind.MAIN_HUB for request in requests)
+            assert all(request.submitted_at <= scenario.planning_cutoff_at for request in requests)
+
+    assert signatures[0] == signatures[1]
+
+
+def test_demand_report_contains_scenario_summary(tmp_path) -> None:
+    engine = create_database_engine(f"sqlite:///{tmp_path / 'test.db'}")
+    Base.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        seed_stops(session)
+        summary = generate_demand(
+            session,
+            DemandGenerationConfig(
+                service_date=date(2026, 10, 5),
+                passenger_count=100,
+                random_seed=42,
+            ),
+        )
+        session.commit()
+        output_path = build_demand_report(
+            session,
+            summary.scenario_id,
+            tmp_path / "demand_report.html",
+        )
+
+    report_html = output_path.read_text(encoding="utf-8")
+    assert "Synthetic demand 2026-10-05 seed 42" in report_html
+    assert "100</strong><span>passengers" in report_html
+    assert "Passenger origins" in report_html
+    assert "Destination cities" in report_html
